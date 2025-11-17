@@ -1,11 +1,10 @@
 import json
-import os
 from pathlib import Path
 
 import requests
-from dotenv import load_dotenv
-from prefect import flow, task
-from prefect.logging import get_run_logger
+from prefect import flow, get_run_logger, task
+from prefect.blocks.system import Secret
+
 REPORTS_DIR = Path("reports/llm")
 
 
@@ -27,7 +26,7 @@ MODELLO SALVATO IN:
 {best_model_path}
 
 Scrivi un report tecnico IN ITALIANO, massimo ~250 parole, che:
-- riassuma la qualità dei dati (spiega i controlli in modo comprensibile)
+- riassuma la qualita dei dati (spiega i controlli in modo comprensibile)
 - interpreti la metrica RMSE e il numero di alberi
 - suggerisca 2-3 possibili miglioramenti per dati e modello
 - stile sintetico ma chiaro, a bullet point dove utile.
@@ -37,12 +36,12 @@ Scrivi un report tecnico IN ITALIANO, massimo ~250 parole, che:
 @task(retries=3, retry_delay_seconds=10)
 def call_llm_openrouter(prompt: str) -> str:
     """
-    Chiama l'API OpenRouter per ottenere un report generato da Mixtral.
+    Chiama l'API OpenRouter usando un Secret Block Prefect per la API key.
     """
-    load_dotenv()
-    api_key = os.getenv("OPENROUTER_API_KEY")
+    secret_block = Secret.load("openrouter-api-key")
+    api_key = secret_block.get()
     if not api_key:
-        raise ValueError("OPENROUTER_API_KEY non impostata nel .env")
+        raise ValueError("OPENROUTER_API_KEY non presente nel Secret Block")
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -50,7 +49,7 @@ def call_llm_openrouter(prompt: str) -> str:
     }
 
     payload = {
-        "model": "mistralai/mixtral-8x7b-instruct",  # modello LLM selezionato
+        "model": "openai/gpt-oss-20b:free",  # modello LLM selezionato
         "messages": [
             {
                 "role": "system",
