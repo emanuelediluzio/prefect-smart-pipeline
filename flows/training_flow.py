@@ -93,8 +93,11 @@ def training_flow(clean_data_paths: list[str]):
     results_futures = [
         train_with_params.submit(data_path, n) for n in params
     ]
+    # Risolviamo i future per poter confrontare le metriche
+    results = [future.result() for future in results_futures]
 
-    best = select_best_model(results_futures)
+    best_future = select_best_model(results)
+    best = best_future.result()
     rmse = best["rmse"]
     best_model_path = best["model_path"]
 
