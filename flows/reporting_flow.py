@@ -3,7 +3,10 @@ from pathlib import Path
 
 import requests
 from prefect import flow, get_run_logger, task
+from prefect.artifacts import create_markdown_artifact
 from prefect.blocks.system import Secret
+
+from flows.storage_utils import upload_to_remote_storage
 
 REPORTS_DIR = Path("reports/llm")
 
@@ -79,6 +82,19 @@ def save_report(run_date: str, content: str) -> str:
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     out_path = REPORTS_DIR / f"report_{run_date}.md"
     out_path.write_text(content, encoding="utf-8")
+    remote_uri = upload_to_remote_storage(out_path, "reports/llm")
+    markdown = (
+        f"**Report LLM**\n\n"
+        f"- file locale: `{out_path}`\n"
+        f"- run_date: {run_date}"
+    )
+    if remote_uri:
+        markdown += f"\n- download: [report_{run_date}.md]({remote_uri})"
+    create_markdown_artifact(
+        key=f"llm-report-{run_date}",
+        markdown=markdown,
+        description="Report LLM generato dal flow di reporting.",
+    )
     return str(out_path)
 
 

@@ -3,10 +3,13 @@ from pathlib import Path
 import joblib
 import pandas as pd
 from prefect import flow, task
-from prefect.logging import get_run_logger
+from prefect.artifacts import create_markdown_artifact
 from prefect.events import emit_event
+from prefect.logging import get_run_logger
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
+
+from flows.storage_utils import upload_to_remote_storage
 
 MODELS_DIR = Path("data/models")
 THRESHOLD_RMSE = 2.0  # soglia arbitraria per dire "modello buono/brutto"
@@ -101,6 +104,21 @@ def training_flow(clean_data_paths: list[str]):
     best_model_path = best["model_path"]
 
     logger.info(f"[TRAINING] Best model n_estimators={best['n_estimators']} rmse={rmse:.4f}")
+
+    remote_uri = upload_to_remote_storage(Path(best_model_path), "data/models")
+    markdown = (
+        f"**Modello RandomForest**\n\n"
+        f"- file locale: `{best_model_path}`\n"
+        f"- n_estimators: {best['n_estimators']}\n"
+        f"- rmse: {rmse:.4f}"
+    )
+    if remote_uri:
+        markdown += f"\n- download: [rf_{best['n_estimators']}.joblib]({remote_uri})"
+    create_markdown_artifact(
+        key=f"best-model-{best['n_estimators']}",
+        markdown=markdown,
+        description="Modello RandomForest addestrato dal training flow.",
+    )
 
     # Evento di qualità
     emit_model_quality_event.submit(rmse)

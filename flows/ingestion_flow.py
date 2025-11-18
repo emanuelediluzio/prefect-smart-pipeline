@@ -1,8 +1,12 @@
-from prefect import flow, task
-from prefect.logging import get_run_logger
 from pathlib import Path
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+from prefect import flow, task
+from prefect.artifacts import create_markdown_artifact
+from prefect.logging import get_run_logger
+
+from flows.storage_utils import upload_to_remote_storage
 
 DATA_RAW_DIR = Path("data/raw")
 DATA_PROCESSED_DIR = Path("data/processed")
@@ -24,6 +28,20 @@ def save_parquet(df: pd.DataFrame, filename: str) -> str:
     DATA_PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     out_path = DATA_PROCESSED_DIR / filename
     df.to_parquet(out_path, index=False)
+    remote_uri = upload_to_remote_storage(out_path, "data/processed")
+    markdown = (
+        f"**Dataset processed**\n\n"
+        f"- file locale: `{out_path}`\n"
+        f"- righe: {len(df)}\n"
+        f"- colonne: {', '.join(df.columns)}"
+    )
+    if remote_uri:
+        markdown += f"\n- download: [{filename}]({remote_uri})"
+    create_markdown_artifact(
+        key=f"processed-dataset-{filename}",
+        markdown=markdown,
+        description="Dataset processed generato dal flow di ingestion.",
+    )
     return str(out_path)
 
 
