@@ -6,4 +6,3 @@ fastparquet
 joblib
 python-dotenv
 requests
-prefect-email
