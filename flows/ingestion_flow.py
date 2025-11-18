@@ -24,7 +24,7 @@ def read_csv_if_exists(path: Path) -> pd.DataFrame | None:
 
 
 @task
-def save_parquet(df: pd.DataFrame, filename: str) -> str:
+def save_parquet(df: pd.DataFrame, filename: str, run_date: str) -> str:
     DATA_PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     out_path = DATA_PROCESSED_DIR / filename
     df.to_parquet(out_path, index=False)
@@ -65,7 +65,7 @@ def ingestion_flow(run_date: str) -> list[str]:
     df = read_csv_if_exists(raw_csv_path)
     logger.info(f"[INGESTION] Trovato CSV reale con shape={df.shape}")
 
-    out_path = save_parquet(df, f"dataset_{run_date}.parquet")
+    out_path = save_parquet(df, f"dataset_{run_date}.parquet", run_date)
     logger.info(f"[INGESTION] Dataset (reale o sintetico) salvato in {out_path}")
 
     return [out_path]
