@@ -16,6 +16,7 @@ if __name__ == "__main__":
             # Pacchetti che Prefect deve installare nel container
             "pip_packages": [
                 "prefect>=3.0.0",
+                "prefect-email",
                 "pandas",
                 "scikit-learn",
                 "pyarrow",
