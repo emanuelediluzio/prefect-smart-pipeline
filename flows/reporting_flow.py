@@ -88,6 +88,7 @@ def save_report(run_date: str, content: str) -> str:
     out_path = REPORTS_DIR / f"report_{run_date}.md"
     out_path.write_text(content, encoding="utf-8")
     remote_uri = upload_to_remote_storage(out_path, "reports/llm")
+    key_safe = f"llm-report-{run_date}".replace("_", "-").lower()
     markdown = (
         f"**Report LLM**\n\n"
         f"- file locale: `{out_path}`\n"
@@ -96,7 +97,7 @@ def save_report(run_date: str, content: str) -> str:
     if remote_uri:
         markdown += f"\n- download: [report_{run_date}.md]({remote_uri})"
     create_markdown_artifact(
-        key=f"llm-report-{run_date}",
+        key=key_safe,
         markdown=markdown,
         description="Report LLM generato dal flow di reporting.",
     )

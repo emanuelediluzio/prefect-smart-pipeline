@@ -29,6 +29,7 @@ def save_parquet(df: pd.DataFrame, filename: str) -> str:
     out_path = DATA_PROCESSED_DIR / filename
     df.to_parquet(out_path, index=False)
     remote_uri = upload_to_remote_storage(out_path, "data/processed")
+    key_safe = f"processed-dataset-{run_date}".replace("_", "-").lower()
     markdown = (
         f"**Dataset processed**\n\n"
         f"- file locale: `{out_path}`\n"
@@ -38,7 +39,7 @@ def save_parquet(df: pd.DataFrame, filename: str) -> str:
     if remote_uri:
         markdown += f"\n- download: [{filename}]({remote_uri})"
     create_markdown_artifact(
-        key=f"processed-dataset-{filename}",
+        key=key_safe,
         markdown=markdown,
         description="Dataset processed generato dal flow di ingestion.",
     )

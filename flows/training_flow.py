@@ -106,6 +106,7 @@ def training_flow(clean_data_paths: list[str]):
     logger.info(f"[TRAINING] Best model n_estimators={best['n_estimators']} rmse={rmse:.4f}")
 
     remote_uri = upload_to_remote_storage(Path(best_model_path), "data/models")
+    key_safe = f"best-model-{best['n_estimators']}".replace("_", "-").lower()
     markdown = (
         f"**Modello RandomForest**\n\n"
         f"- file locale: `{best_model_path}`\n"
@@ -115,7 +116,7 @@ def training_flow(clean_data_paths: list[str]):
     if remote_uri:
         markdown += f"\n- download: [rf_{best['n_estimators']}.joblib]({remote_uri})"
     create_markdown_artifact(
-        key=f"best-model-{best['n_estimators']}",
+        key=key_safe,
         markdown=markdown,
         description="Modello RandomForest addestrato dal training flow.",
     )
