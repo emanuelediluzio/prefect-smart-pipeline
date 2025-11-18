@@ -96,8 +96,7 @@ def training_flow(clean_data_paths: list[str]):
     # Risolviamo i future per poter confrontare le metriche
     results = [future.result() for future in results_futures]
 
-    best_future = select_best_model(results)
-    best = best_future.result()
+    best = select_best_model(results)
     rmse = best["rmse"]
     best_model_path = best["model_path"]
 
