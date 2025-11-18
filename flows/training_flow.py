@@ -29,7 +29,7 @@ def train_with_params(data_path: str, n_estimators: int) -> dict:
     )
     model.fit(X, y)
     preds = model.predict(X)
-    rmse = mean_squared_error(y, preds, squared=False)
+    rmse = mean_squared_error(y, preds) ** 0.5  # compatibile anche con versioni sklearn vecchie
 
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     model_path = MODELS_DIR / f"rf_{n_estimators}.joblib"
