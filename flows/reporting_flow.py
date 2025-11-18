@@ -1,14 +1,19 @@
 import json
+import os
 from pathlib import Path
+from typing import Iterable, Optional
 
 import requests
 from prefect import flow, get_run_logger, task
 from prefect.artifacts import create_markdown_artifact
 from prefect.blocks.system import Secret
+from prefect_email import EmailServerCredentials
 
 from flows.storage_utils import upload_to_remote_storage
 
 REPORTS_DIR = Path("reports/llm")
+EMAIL_BLOCK_NAME = "pipeline-report-email"
+EMAIL_RECIPIENTS_ENV = "REPORT_EMAIL_TO"
 
 
 @task
@@ -98,8 +103,68 @@ def save_report(run_date: str, content: str) -> str:
     return str(out_path)
 
 
+def _parse_recipients(raw: Optional[Iterable[str]], logger) -> list[str]:
+    if raw:
+        recipients = [addr.strip() for addr in raw if addr and addr.strip()]
+        if recipients:
+            return recipients
+    env_value = os.getenv(EMAIL_RECIPIENTS_ENV)
+    if env_value:
+        recipients = [addr.strip() for addr in env_value.split(",") if addr.strip()]
+        if recipients:
+            return recipients
+    logger.info("Nessun destinatario email configurato; salto invio email.")
+    return []
+
+
+@task
+def send_report_email(
+    run_date: str,
+    metrics: dict,
+    report_text: str,
+    recipients: Optional[Iterable[str]] = None,
+) -> None:
+    """
+    Invia il contenuto del report via email usando un Email block Prefect.
+    """
+    logger = get_run_logger()
+    recipient_list = _parse_recipients(recipients, logger)
+    if not recipient_list:
+        return
+
+    try:
+        email_block = EmailServerCredentials.load(EMAIL_BLOCK_NAME)
+    except ValueError:
+        logger.warning(
+            "Email block '%s' non configurato: impossibile inviare il report.",
+            EMAIL_BLOCK_NAME,
+        )
+        return
+
+    subject = f"[Prefect] Report pipeline {run_date}"
+    body = (
+        f"Run date: {run_date}\n"
+        f"RMSE: {metrics.get('rmse')}\n"
+        f"n_estimators: {metrics.get('n_estimators')}\n\n"
+        f"--- REPORT ---\n{report_text}"
+    )
+
+    email_block.send_email(
+        subject=subject,
+        msg=body,
+        email_to=recipient_list,
+    )
+    logger.info("Email inviata a: %s", ", ".join(recipient_list))
+
+
 @flow(name="reporting_flow")
-def reporting_flow(run_date: str, validation_results, metrics: dict, best_model_path: str):
+def reporting_flow(
+    run_date: str,
+    validation_results,
+    metrics: dict,
+    best_model_path: str,
+    email_recipients: Optional[Iterable[str]] = None,
+):
     """
     Subflow di reporting: prepara il prompt, chiama LLM, salva report .md.
     """
@@ -107,4 +172,5 @@ def reporting_flow(run_date: str, validation_results, metrics: dict, best_model_
     prompt = build_prompt(run_date, validation_results, metrics, best_model_path)
     report_text = call_llm_openrouter(prompt)
     path = save_report(run_date, report_text)
+    send_report_email.submit(run_date, metrics, report_text, email_recipients)
     logger.info(f"[REPORTING] Report LLM salvato in {path}")

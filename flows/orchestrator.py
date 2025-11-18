@@ -1,3 +1,5 @@
+from typing import Iterable, Optional
+
 from prefect import flow, task
 from prefect.events import emit_event
 from prefect.logging import get_run_logger
@@ -24,7 +26,10 @@ def emit_pipeline_finished_event(run_date: str):
 
 
 @flow(name="main_orchestrator_flow")
-def main_orchestrator_flow(run_date: str = "2025-11-17"):
+def main_orchestrator_flow(
+    run_date: str = "2025-11-17",
+    report_email_recipients: Optional[Iterable[str]] = None,
+):
     """
     Flow principale:
     1. ingestion
@@ -52,6 +57,7 @@ def main_orchestrator_flow(run_date: str = "2025-11-17"):
         validation_results=validation_results,
         metrics=metrics,
         best_model_path=best_model_path,
+        email_recipients=report_email_recipients,
     )
 
     # 5) Evento di fine pipeline
